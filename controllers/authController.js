@@ -9,7 +9,7 @@ const generateOTP = () => {
 
 // Function to validate if the email is a Gmail address (Changeable)
 const validateEmail = (email) => {
-  const regex = /@gmail\.com$/;
+  const regex = /@acredge\.in$/;
   return regex.test(email);
 };
 
@@ -48,7 +48,7 @@ exports.verifyEmail = async (req, res) => {
     }
 
     const otp = generateOTP(); // Generate a 6-digit OTP
-    const expirationTime = Date.now() + 600000; // OTP is valid for 10 minutes (600,000 ms)
+    const expirationTime = Date.now() + 300000; // OTP is valid for 5 minutes
 
     // Store the OTP in Firestore with an expiration time
     await admin.firestore().collection('otps').doc(email).set({
