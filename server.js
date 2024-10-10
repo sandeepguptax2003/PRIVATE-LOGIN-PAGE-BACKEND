@@ -10,7 +10,8 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: 'https://wisdompeak-assignment.web.app', // Your frontend domain
+  origin: 'https://wisdompeak-assignment.web.app',
+  origin: 'https://user-login-gold.vercel.app/', // Your frontend domain
   credentials: true, // This is important for cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
   allowedHeaders: ['Content-Type', 'Authorization'] // Allowed headers
