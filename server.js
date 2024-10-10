@@ -14,6 +14,7 @@ app.use(cookieParser());
 
 app.use(cors({
   origin: 'https://private-login-page-backend.onrender.com/api/auth',
+  origin: 'https://private-login-page-backend.onrender.com',
   credentials: true
 }));
 
