@@ -96,17 +96,24 @@ exports.verifyOTP = async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    res.status(200).json({ message: "Logged in successfully", token });
+    // Set the token as an HTTP-only cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+      sameSite: 'strict',
+      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 7 days or 24 hours
+    });
+
+    res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "OTP error occurred." });
   }
 };
 
-// Middleware to check if the user is authenticated
 exports.isAuthenticated = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.cookies.token;
 
     if (!token) {
       return res.status(401).json({ message: "No token provided." });
@@ -132,14 +139,18 @@ exports.isAuthenticated = async (req, res, next) => {
   }
 };
 
-// Controller function for logging out
 exports.logout = async (req, res) => {
   try {
     const { email } = req.user;
     await admin.firestore().collection('tokens').doc(email).delete();
+    res.clearCookie('token');
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Logout error occurred." });
   }
+};
+
+exports.checkAuth = async (req, res) => {
+  res.status(200).json({ message: "Authenticated", user: req.user });
 };
