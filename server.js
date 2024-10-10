@@ -3,20 +3,22 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const authRoutes = require('./routes/auth');
 const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin: 'https://wisdompeak-assignment.web.app', // Your frontend domain
+  credentials: true, // This is important for cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'] // Allowed headers
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(cookieParser());
-
-app.use(cors({
-  origin: 'https://private-login-page-backend.onrender.com/api/auth',
-  origin: 'https://private-login-page-backend.onrender.com',
-  credentials: true
-}));
 
 // Routes for any requests starting with '/api/auth'
 app.use('/api/auth', authRoutes);
