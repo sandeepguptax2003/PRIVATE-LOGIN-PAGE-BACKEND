@@ -1,6 +1,8 @@
 const admin = require('../config/firebase');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const NodeCache = require('node-cache');
+const tokenCache = new NodeCache({ stdTTL: 300 });
 
 // Function to generate a 6-digit OTP
 const generateOTP = () => {
@@ -82,16 +84,20 @@ exports.verifyOTP = async (req, res) => {
       expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000)))
     });
 
+    // Set the cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+      path: '/'  // Ensure the cookie is accessible for all paths
     });
+
+    console.log('Cookie set:', token); // Log for debugging
 
     res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
-    console.error(error);
+    console.error('Error in verifyOTP:', error);
     res.status(500).json({ message: "OTP error occurred." });
   }
 };
@@ -99,6 +105,7 @@ exports.verifyOTP = async (req, res) => {
 exports.isAuthenticated = async (req, res, next) => {
   try {
     const token = req.cookies.token;
+    console.log('Received token:', token); // Log for debugging
 
     if (!token) {
       return res.status(401).json({ message: "No token provided." });
@@ -106,7 +113,14 @@ exports.isAuthenticated = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Check if the token exists in Firestore
+    // Check if the token is in the cache
+    const cachedToken = tokenCache.get(decoded.email);
+    if (cachedToken === token) {
+      req.user = decoded;
+      return next();
+    }
+
+    // If not in cache, check Firestore
     const tokenDoc = await admin.firestore().collection('tokens').doc(decoded.email).get();
 
     if (!tokenDoc.exists || tokenDoc.data().token !== token) {
@@ -118,10 +132,13 @@ exports.isAuthenticated = async (req, res, next) => {
       return res.status(401).json({ message: "Token has expired." });
     }
 
+    // Cache the valid token
+    tokenCache.set(decoded.email, token);
+
     req.user = decoded;
     next();
   } catch (error) {
-    console.error(error);
+    console.error('Error in isAuthenticated:', error);
     res.status(401).json({ message: "Authentication failed." });
   }
 };
