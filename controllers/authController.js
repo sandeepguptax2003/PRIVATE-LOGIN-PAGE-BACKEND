@@ -96,13 +96,14 @@ exports.verifyOTP = async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // Set the token as an HTTP-only cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-      sameSite: 'strict',
-      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 7 days or 24 hours
-    });
+    // Set the token as an HTTP-only cookie after login
+res.cookie('token', token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+  sameSite: 'strict', // Use sameSite policy
+  maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 7 days or 24 hours
+});
+
 
     res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
