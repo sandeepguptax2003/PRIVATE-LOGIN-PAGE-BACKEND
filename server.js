@@ -9,17 +9,17 @@ const authRoutes = require('./routes/auth');
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: ['https://wisdompeak-assignment.web.app', 'http://127.0.0.1:5173/'], // Allowed frontend domains
-  credentials: true, // Important for cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'] // Allowed headers
-};
+// const corsOptions = {
+//   origin: ['https://wisdompeak-assignment.web.app', 'http://127.0.0.1:5173/'], // Allowed frontend domains
+//   credentials: true, // Important for cookies
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'] // Allowed headers
+// };
 
-// Handle preflight requests
-app.options('*', cors(corsOptions)); 
+// // Handle preflight requests
+// app.options('*', cors(corsOptions)); 
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(cookieParser());
 
