@@ -104,36 +104,55 @@ exports.verifyOTP = async (req, res) => {
 
 exports.isAuthenticated = async (req, res, next) => {
   try {
+    console.log('Cookies received:', req.cookies);
     const token = req.cookies.token;
-    console.log('Received token:', token); // Log for debugging
+    console.log('Token extracted:', token);
 
     if (!token) {
+      console.log('No token provided in cookies');
       return res.status(401).json({ message: "No token provided." });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Token decoded successfully:', decoded);
+    } catch (error) {
+      console.log('Token verification failed:', error.message);
+      return res.status(401).json({ message: "Invalid token." });
+    }
     
     // Check if the token is in the cache
     const cachedToken = tokenCache.get(decoded.email);
     if (cachedToken === token) {
+      console.log('Token found in cache');
       req.user = decoded;
       return next();
     }
 
+    console.log('Token not in cache, checking Firestore');
     // If not in cache, check Firestore
     const tokenDoc = await admin.firestore().collection('tokens').doc(decoded.email).get();
 
-    if (!tokenDoc.exists || tokenDoc.data().token !== token) {
+    if (!tokenDoc.exists) {
+      console.log('Token document not found in Firestore');
+      return res.status(401).json({ message: "Invalid token." });
+    }
+
+    if (tokenDoc.data().token !== token) {
+      console.log('Token in Firestore does not match provided token');
       return res.status(401).json({ message: "Invalid token." });
     }
 
     if (tokenDoc.data().expiresAt.toDate() < new Date()) {
+      console.log('Token has expired');
       await admin.firestore().collection('tokens').doc(decoded.email).delete();
       return res.status(401).json({ message: "Token has expired." });
     }
 
     // Cache the valid token
     tokenCache.set(decoded.email, token);
+    console.log('Token cached');
 
     req.user = decoded;
     next();
