@@ -66,34 +66,25 @@ exports.verifyOTP = async (req, res) => {
   try {
     const { email, otp, rememberMe } = req.body;
 
+    // Check OTP from Firestore (already handled)
     const otpDoc = await admin.firestore().collection('otps').doc(email).get();
-
-    if (!otpDoc.exists) {
-      return res.status(400).json({ message: "OTP not found or expired." });
+    if (!otpDoc.exists || otpDoc.data().otp !== otp) {
+      return res.status(400).json({ message: "Invalid or expired OTP." });
     }
 
-    const { otp: storedOTP, expirationTime } = otpDoc.data();
-
-    if (Date.now() > expirationTime) {
-      await admin.firestore().collection('otps').doc(email).delete();
-      return res.status(400).json({ message: "OTP has expired." });
-    }
-
-    if (otp !== storedOTP) {
-      return res.status(400).json({ message: "OTP is incorrect." });
-    }
-
+    // Delete OTP after successful verification
     await admin.firestore().collection('otps').doc(email).delete();
 
-    // Generate JWT token
-    const expiresIn = rememberMe ? '7d' : '24h';
+    // Generate JWT token with expiration based on 'Remember Me' option
+    const expiresIn = rememberMe ? '7d' : '24h'; // 7 days if "Remember Me" is checked, otherwise 24 hours
     const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn });
 
-    // Store token in Firestore
-    await admin.firestore().collection('tokens').doc(email).set({
-      token,
-      expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + (rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000))),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    // Set token as an HTTP-only cookie with appropriate expiration
+    res.cookie('token', token, {
+      httpOnly: true, // Secure the cookie to prevent JavaScript access
+      secure: process.env.NODE_ENV === 'production', // Enable in production
+      sameSite: 'strict', // Prevent CSRF
+      maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // 7 days or 24 hours
     });
 
     // Set the token as an HTTP-only cookie after login
