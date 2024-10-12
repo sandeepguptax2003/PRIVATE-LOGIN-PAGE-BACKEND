@@ -162,58 +162,40 @@ exports.isAuthenticated = async (req, res, next) => {
   }
 };
 
-// exports.logout = async (req, res) => {
-//   try {
-//     const token = req.cookies.token;
-//     if (token) {
-//       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//       await admin.firestore().collection('tokens').doc(decoded.email).delete();
-//     }
-//     res.clearCookie('token');
-//     res.status(200).json({ message: "Logged out successfully" });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: "Logout error occurred." });
-//   }
-// };
-
-// exports.checkAuth = async (req, res) => {
-//   res.status(200).json({ message: "Authenticated", user: req.user });
-// };
-
-
 exports.logout = async (req, res) => {
   try {
-    // Ensure you are using cookie-parser middleware to parse cookies
-    const token = req.cookies.token; // Assuming the token is stored in a cookie named 'token'
-
+    console.log('Request cookies:', req.cookies);
+    console.log('Request headers:', req.headers);
+    const token = req.cookies.token;
+    console.log('Token from cookies:', token);
+    
     if (!token) {
-      return res.status(401).json({ message: "No token provided, user is not logged in." });
+      console.log('No token found in cookies');
+      return res.status(401).json({ message: "No token provided." });
     }
 
-    // Verify the token with your secret
-    let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(403).json({ message: "Invalid or expired token." });
-    }
-
-    // Optionally, delete the token from your token store if needed (in this case Firestore)
-    if (decoded && decoded.email) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       await admin.firestore().collection('tokens').doc(decoded.email).delete();
+    } catch (jwtError) {
+      console.error('JWT verification failed:', jwtError);
+      return res.status(401).json({ message: "Invalid token." });
     }
 
-    // Clear the cookie from the response (use the same options as when you set the cookie)
     res.clearCookie('token', {
-      httpOnly: true,   // Cookie is HttpOnly
-      secure: true,    
-      sameSite: 'strict', 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
     });
 
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error("Error during logout:", error);
-    res.status(500).json({ message: "An error occurred during logout." });
+    console.error('Logout error:', error);
+    res.status(500).json({ message: "Logout error occurred." });
   }
+};
+
+exports.checkAuth = async (req, res) => {
+  res.status(200).json({ message: "Authenticated", user: req.user });
 };
