@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 
 const app = express();
+app.use(cookieParser());
 
 // CORS configuration
 // const corsOptions = {
@@ -24,12 +25,12 @@ const app = express();
 app.use(cors({
   origin: true, // Or specify your frontend domain
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  // allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(bodyParser.json());
-app.use(cookieParser());
+
 
 app.use('/api/auth', authRoutes);
 
