@@ -22,22 +22,19 @@ const app = express();
 // app.use(cors(corsOptions));
 
 app.use(cors({
-  origin: true, // Allow any origin
-  credentials: true, // Allow credentials
+  origin: true, // Or specify your frontend domain
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-
 app.use(bodyParser.json());
 app.use(cookieParser());
 
-// Routes for any requests starting with '/api/auth'
 app.use('/api/auth', authRoutes);
 
 const PORT = process.env.PORT || 3000;
 
-// Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

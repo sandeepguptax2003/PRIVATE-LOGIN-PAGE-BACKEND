@@ -87,13 +87,11 @@ exports.verifyOTP = async (req, res) => {
     // Set the cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Always use secure cookies
       sameSite: 'strict',
       maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
-      path: '/'  // Ensure the cookie is accessible for all paths
+      path: '/'
     });
-
-    console.log('Cookie set:', token); // Log for debugging
 
     res.status(200).json({ message: "Logged in successfully" });
   } catch (error) {
@@ -104,55 +102,35 @@ exports.verifyOTP = async (req, res) => {
 
 exports.isAuthenticated = async (req, res, next) => {
   try {
-    console.log('Cookies received:', req.cookies);
     const token = req.cookies.token;
-    console.log('Token extracted:', token);
 
     if (!token) {
-      console.log('No token provided in cookies');
       return res.status(401).json({ message: "No token provided." });
     }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token decoded successfully:', decoded);
     } catch (error) {
-      console.log('Token verification failed:', error.message);
       return res.status(401).json({ message: "Invalid token." });
     }
     
     // Check if the token is in the cache
     const cachedToken = tokenCache.get(decoded.email);
     if (cachedToken === token) {
-      console.log('Token found in cache');
       req.user = decoded;
       return next();
     }
 
-    console.log('Token not in cache, checking Firestore');
     // If not in cache, check Firestore
     const tokenDoc = await admin.firestore().collection('tokens').doc(decoded.email).get();
 
-    if (!tokenDoc.exists) {
-      console.log('Token document not found in Firestore');
-      return res.status(401).json({ message: "Invalid token." });
-    }
-
-    if (tokenDoc.data().token !== token) {
-      console.log('Token in Firestore does not match provided token');
-      return res.status(401).json({ message: "Invalid token." });
-    }
-
-    if (tokenDoc.data().expiresAt.toDate() < new Date()) {
-      console.log('Token has expired');
-      await admin.firestore().collection('tokens').doc(decoded.email).delete();
-      return res.status(401).json({ message: "Token has expired." });
+    if (!tokenDoc.exists || tokenDoc.data().token !== token || tokenDoc.data().expiresAt.toDate() < new Date()) {
+      return res.status(401).json({ message: "Invalid or expired token." });
     }
 
     // Cache the valid token
     tokenCache.set(decoded.email, token);
-    console.log('Token cached');
 
     req.user = decoded;
     next();
@@ -164,29 +142,25 @@ exports.isAuthenticated = async (req, res, next) => {
 
 exports.logout = async (req, res) => {
   try {
-    console.log('Request cookies:', req.cookies);
-    console.log('Request headers:', req.headers);
     const token = req.cookies.token;
-    console.log('Token from cookies:', token);
     
     if (!token) {
-      console.log('No token found in cookies');
       return res.status(401).json({ message: "No token provided." });
     }
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       await admin.firestore().collection('tokens').doc(decoded.email).delete();
+      tokenCache.del(decoded.email);
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError);
-      return res.status(401).json({ message: "Invalid token." });
     }
 
     res.clearCookie('token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'strict',
-      path: '/' // patsas
+      path: '/'
     });
 
     res.status(200).json({ message: "Logged out successfully" });
